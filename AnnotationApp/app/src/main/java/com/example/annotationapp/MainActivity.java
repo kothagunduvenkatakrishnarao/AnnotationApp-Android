@@ -76,8 +76,7 @@ public class MainActivity extends AppCompatActivity
             if(requestCode==1)
             {
                 Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
-                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
-                Bitmap temp=alteredBitmap;
+                Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
                 paint.setColor(Color.GREEN);
@@ -86,9 +85,6 @@ public class MainActivity extends AppCompatActivity
                 Matrix matrix = new Matrix();
                 canvas.drawBitmap(bitmap, matrix, paint);
                 imview.setImageBitmap(alteredBitmap);
-                canvas = new Canvas(temp);
-//                canvas.drawRect(100,100,200,200,paint);
-//                canvas.drawRect(200,200,300,300,paint);
                 imview.setOnTouchListener(new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
@@ -99,17 +95,6 @@ public class MainActivity extends AppCompatActivity
                                 downy = event.getY();
                                 downx = (int)((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
                                 downy = (int)((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                imview.invalidate();
-                                break;
-                            case MotionEvent.ACTION_MOVE:
-                                upx = event.getX();
-                                upy = event.getY();
-                                projectedX = (int)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                projectedY = (int)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                canvas.drawBitmap(bitmap, matrix, paint);
-                                imview.setImageBitmap(temp);
-                                canvas.drawRect(downx, downy, projectedX, projectedY,paint);
-                                imview.invalidate();
                                 break;
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
