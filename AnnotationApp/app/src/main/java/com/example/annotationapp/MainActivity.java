@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -33,6 +34,7 @@ import static android.os.Environment.getExternalStoragePublicDirectory;
 
 public class MainActivity extends AppCompatActivity
 {
+    ArrayList<ArrayList<Float>> result;
     Button button,btnsubmit,uploadimage,annotate;
     ImageView imview;
     EditText getnumber;
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View v) {
                 button.setVisibility(View.VISIBLE);
                 uploadimage.setVisibility(View.VISIBLE);
+                Log.d("result",""+result);
                 Toast.makeText(MainActivity.this,"This function is not implemented",Toast.LENGTH_SHORT).show();
             }
         });
@@ -82,7 +85,17 @@ public class MainActivity extends AppCompatActivity
                 {
                     numberOfAnnotations--;
                     Toast.makeText(MainActivity.this,"Annotation deleted!",Toast.LENGTH_SHORT).show();
-                    // Operation to remove annotation
+                    result.remove(value-1);
+                    Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
+                    Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+                    canvas = new Canvas(alteredBitmap);
+                    Matrix matrix = new Matrix();
+                    canvas.drawBitmap(bitmap, matrix, paint);
+                    for(int i=0;i<numberOfAnnotations;i++)
+                    {
+                        redraw(i);
+                    }
+                    imview.setImageBitmap(alteredBitmap);
                 }
 
             }
@@ -91,6 +104,8 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 button.setVisibility(View.GONE);
+                numberOfAnnotations=0;
+                result=new ArrayList<>();
                 Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
@@ -99,6 +114,8 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 uploadimage.setVisibility(View.GONE);
+                result=new ArrayList<>();
+                numberOfAnnotations=0;
                 try {
                     dispatchPictureTakerAction();
                 } catch (IOException e) {
@@ -141,8 +158,13 @@ public class MainActivity extends AppCompatActivity
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
                                 upy = event.getY();
+                                if(upx<0) upx=0;
+                                if(upx>imview.getWidth()) upx = imview.getWidth();
+                                if(upy < 0) upy =0;
+                                if(upy >imview.getHeight() ) upy=imview.getHeight();
                                 projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
                                 projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+
                                 onDrawRect(downx,downy,projectedX,projectedY,paint);
                                 imview.invalidate();
                                 break;
@@ -181,6 +203,7 @@ public class MainActivity extends AppCompatActivity
                         int action = event.getAction();
                         switch (action) {
                             case MotionEvent.ACTION_DOWN:
+                                annotate.setVisibility(View.VISIBLE);
                                 numberOfAnnotations++;
                                 downx = event.getX();
                                 downy = event.getY();
@@ -190,6 +213,10 @@ public class MainActivity extends AppCompatActivity
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
                                 upy = event.getY();
+                                if(upx<0) upx=0;
+                                if(upx>imview.getWidth()) upx = imview.getWidth();
+                                if(upy < 0) upy =0;
+                                if(upy >imview.getHeight() ) upy=imview.getHeight();
                                 projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
                                 projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
                                 onDrawRect(downx,downy,projectedX,projectedY,paint);
@@ -204,9 +231,19 @@ public class MainActivity extends AppCompatActivity
             }
         }
     }
+    public void redraw(int i)
+    {
+        canvas.drawRect(result.get(i).get(0), result.get(i).get(1), result.get(i).get(2), result.get(i).get(3),paint);
+    }
     public void onDrawRect(float x,float y, float x1,float y1 ,Paint paint)
     {
+        ArrayList<Float> ans=new ArrayList<>();
+        ans.add(x);
+        ans.add(y);
+        ans.add(x1);
+        ans.add(y1);
         canvas.drawRect(x, y, x1, y1,paint);
+        result.add(ans);
     }
     private void dispatchPictureTakerAction() throws IOException {
         Intent takepic= new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
