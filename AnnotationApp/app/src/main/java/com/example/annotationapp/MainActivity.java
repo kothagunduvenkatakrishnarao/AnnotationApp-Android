@@ -1,16 +1,14 @@
 package com.example.annotationapp;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.PorterDuff.Mode;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,9 +18,8 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -30,21 +27,22 @@ import java.util.Date;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RectF;
+import android.widget.Toast;
 
 import static android.os.Environment.getExternalStoragePublicDirectory;
 
-
 public class MainActivity extends AppCompatActivity
 {
-    Button button;
+    Button button,btnsubmit,uploadimage,annotate;
     ImageView imview;
+    EditText getnumber;
     String pathToFile=null;
+    int numberOfAnnotations=0;
+    final int RESULT_LOAD_IMAGE=2;
     float downx = 0,downy = 0,upx = 0,upy = 0;
     Canvas canvas;
     Paint paint;
-    int projectedX,projectedY;
-    float MAX_WIDTH = (float) 400;
+    float projectedX,projectedY;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,9 +53,52 @@ public class MainActivity extends AppCompatActivity
         }
         button = findViewById(R.id.button);
         imview =findViewById(R.id.imview);
+        btnsubmit = findViewById(R.id.btnsubmit);
+        getnumber = findViewById(R.id.getnumber);
+        uploadimage = findViewById(R.id.uploadimage);
+        annotate = findViewById(R.id.annotate);
+        annotate.setVisibility(View.GONE);
+        // to upload to data base
+        annotate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button.setVisibility(View.VISIBLE);
+                uploadimage.setVisibility(View.VISIBLE);
+                Toast.makeText(MainActivity.this,"This function is not implemented",Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        //To delete an annotation
+        btnsubmit.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("ShowToast")
+            @Override
+            public void onClick(View v) {
+                int value = Integer.parseInt(getnumber.getText().toString().trim());
+                if(value<=0 || value> numberOfAnnotations)
+                {
+                    Toast.makeText(MainActivity.this,"Enter a Valid Annotation number!",Toast.LENGTH_LONG).show();
+                }
+                else
+                {
+                    numberOfAnnotations--;
+                    Toast.makeText(MainActivity.this,"Annotation deleted!",Toast.LENGTH_SHORT).show();
+                    // Operation to remove annotation
+                }
+
+            }
+        });
+        uploadimage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                button.setVisibility(View.GONE);
+                Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(i, RESULT_LOAD_IMAGE);
+            }
+        });
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                uploadimage.setVisibility(View.GONE);
                 try {
                     dispatchPictureTakerAction();
                 } catch (IOException e) {
@@ -66,7 +107,6 @@ public class MainActivity extends AppCompatActivity
             }
         });
     }
-
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -91,17 +131,20 @@ public class MainActivity extends AppCompatActivity
                         int action = event.getAction();
                         switch (action) {
                             case MotionEvent.ACTION_DOWN:
+                                annotate.setVisibility(View.VISIBLE);
+                                numberOfAnnotations++;
                                 downx = event.getX();
                                 downy = event.getY();
-                                downx = (int)((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                downy = (int)((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                downx = (float) ((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                downy = (float) ((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
                                 break;
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
                                 upy = event.getY();
-                                projectedX = (int)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                projectedY = (int)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                canvas.drawRect(downx, downy, projectedX, projectedY,paint);
+                                projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                imview.invalidate();
                                 break;
                             default:
                                 break;
@@ -111,9 +154,60 @@ public class MainActivity extends AppCompatActivity
                 });
 
             }
+            if (requestCode == RESULT_LOAD_IMAGE && null != data) {
+                Uri selectedImage = data.getData();
+                String[] filePathColumn = { MediaStore.Images.Media.DATA };
+
+                Cursor cursor = getContentResolver().query(selectedImage,
+                        filePathColumn, null, null, null);
+                cursor.moveToFirst();
+
+                int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                pathToFile = cursor.getString(columnIndex);
+                cursor.close();
+                Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
+                Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+                canvas = new Canvas(alteredBitmap);
+                paint = new Paint();
+                paint.setColor(Color.GREEN);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(10);
+                Matrix matrix = new Matrix();
+                canvas.drawBitmap(bitmap, matrix, paint);
+                imview.setImageBitmap(alteredBitmap);
+                imview.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        int action = event.getAction();
+                        switch (action) {
+                            case MotionEvent.ACTION_DOWN:
+                                numberOfAnnotations++;
+                                downx = event.getX();
+                                downy = event.getY();
+                                downx = (float) ((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                downy = (float) ((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                break;
+                            case MotionEvent.ACTION_UP:
+                                upx = event.getX();
+                                upy = event.getY();
+                                projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                imview.invalidate();
+                                break;
+                            default:
+                                break;
+                        }
+                        return true;
+                    }
+                });
+            }
         }
     }
-
+    public void onDrawRect(float x,float y, float x1,float y1 ,Paint paint)
+    {
+        canvas.drawRect(x, y, x1, y1,paint);
+    }
     private void dispatchPictureTakerAction() throws IOException {
         Intent takepic= new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if(takepic.resolveActivity(getPackageManager())!=null)
