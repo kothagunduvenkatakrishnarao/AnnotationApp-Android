@@ -1,7 +1,6 @@
 package com.example.annotationapp;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
@@ -11,6 +10,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.PorterDuff.Mode;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -22,6 +22,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -42,6 +43,8 @@ public class MainActivity extends AppCompatActivity
     float downx = 0,downy = 0,upx = 0,upy = 0;
     Canvas canvas;
     Paint paint;
+    int projectedX,projectedY;
+    float MAX_WIDTH = (float) 400;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,8 +76,8 @@ public class MainActivity extends AppCompatActivity
             if(requestCode==1)
             {
                 Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
-                Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap
-                        .getHeight(), bitmap.getConfig());
+                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+                Bitmap temp=alteredBitmap;
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
                 paint.setColor(Color.GREEN);
@@ -82,13 +85,10 @@ public class MainActivity extends AppCompatActivity
                 paint.setStrokeWidth(10);
                 Matrix matrix = new Matrix();
                 canvas.drawBitmap(bitmap, matrix, paint);
-                canvas.drawRect(100, 100, 100, 100,paint);
                 imview.setImageBitmap(alteredBitmap);
-//                imview.setImageBitmap(bitmap);
-//                canvas = new Canvas(bitmap);
-//                canvas.drawRect(100,100,100,100,paint);
-//                imview.setImageBitmap(bitmap);
-                Log.i("krishna","demo");
+                canvas = new Canvas(temp);
+//                canvas.drawRect(100,100,200,200,paint);
+//                canvas.drawRect(200,200,300,300,paint);
                 imview.setOnTouchListener(new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
@@ -97,25 +97,26 @@ public class MainActivity extends AppCompatActivity
                             case MotionEvent.ACTION_DOWN:
                                 downx = event.getX();
                                 downy = event.getY();
-//                                Log.d("downx",""+downx);
-//                                Log.d("downy",""+downy);
+                                downx = (int)((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                downy = (int)((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                imview.invalidate();
                                 break;
                             case MotionEvent.ACTION_MOVE:
                                 upx = event.getX();
                                 upy = event.getY();
-                                imview.setImageBitmap(alteredBitmap);
-                                canvas.drawRect(downx, downy, 400-upx, 400-upy,paint);
+                                projectedX = (int)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                projectedY = (int)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                canvas.drawBitmap(bitmap, matrix, paint);
+                                imview.setImageBitmap(temp);
+                                canvas.drawRect(downx, downy, projectedX, projectedY,paint);
                                 imview.invalidate();
                                 break;
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
                                 upy = event.getY();
-//                                Log.i("upx",""+upx);
-//                                Log.i("upy",""+upy);
-                                canvas.drawRect(downx, downy, upx, upy,paint);
-                                imview.invalidate();
-                                break;
-                            case MotionEvent.ACTION_CANCEL:
+                                projectedX = (int)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
+                                projectedY = (int)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                canvas.drawRect(downx, downy, projectedX, projectedY,paint);
                                 break;
                             default:
                                 break;
