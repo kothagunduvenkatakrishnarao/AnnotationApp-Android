@@ -152,13 +152,13 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     @Override
     public void onItemSelected(AdapterView<?> parent,View view, int position, long id) {
         String item = parent.getItemAtPosition(position).toString();
-        if(itemsSelected !=null && itemsSelected.size() < numberOfAnnotations) {
+        if(itemsSelected.size() < numberOfAnnotations) {
             itemsSelected.add(item);
+            canvas.drawText(item,(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(2))/2,result.get(numberOfAnnotations-1).get(1),paint);
         }
         else
         {
             Toast.makeText(MainActivity.this, "Please Annotate and then select !", Toast.LENGTH_LONG).show();
-//            canvas.drawText(itemsSelected.get(numberOfAnnotations-1),(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(0))/2,result.get(numberOfAnnotations).get(1),paint);
         }
     }
     @SuppressLint("ClickableViewAccessibility")
@@ -167,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         super.onActivityResult(requestCode, resultCode, data);
         if(resultCode==RESULT_OK)
         {
-            if(requestCode==1)
+            if(requestCode==1 && numberOfAnnotations==itemsSelected.size())
             {
                 Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
@@ -202,7 +202,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                                 if(upy >imview.getHeight() ) upy=imview.getHeight();
                                 projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
                                 projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                if(numberOfAnnotations-itemsSelected.size() == 1) onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                else numberOfAnnotations --;
                                 imview.invalidate();
                                 break;
                             default:
@@ -245,19 +246,20 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                                 numberOfAnnotations++;
                                 downx = event.getX();
                                 downy = event.getY();
-                                downx = (float) ((double)downx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                downy = (float) ((double)downy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
+                                downx = (float) ((double) downx * ((double) bitmap.getWidth() / (double) imview.getWidth()));
+                                downy = (float) ((double) downy * ((double) bitmap.getHeight() / (double) imview.getHeight()));
                                 break;
                             case MotionEvent.ACTION_UP:
                                 upx = event.getX();
                                 upy = event.getY();
-                                if(upx<0) upx=0;
-                                if(upx>imview.getWidth()) upx = imview.getWidth();
-                                if(upy < 0) upy =0;
-                                if(upy >imview.getHeight() ) upy=imview.getHeight();
-                                projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                if (upx < 0) upx = 0;
+                                if (upx > imview.getWidth()) upx = imview.getWidth();
+                                if (upy < 0) upy = 0;
+                                if (upy > imview.getHeight()) upy = imview.getHeight();
+                                projectedX = (float) ((double) upx * ((double) bitmap.getWidth() / (double) imview.getWidth()));
+                                projectedY = (float) ((double) upy * ((double) bitmap.getHeight() / (double) imview.getHeight()));
+                                if(numberOfAnnotations-itemsSelected.size() == 1) onDrawRect(downx, downy, projectedX, projectedY, paint);
+                                else numberOfAnnotations--;
                                 imview.invalidate();
                                 break;
                             default:
