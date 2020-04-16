@@ -17,6 +17,8 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -25,14 +27,17 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.widget.Spinner;
 import android.widget.Toast;
+import android.widget.AdapterView.OnItemSelectedListener;
 
 import static android.os.Environment.getExternalStoragePublicDirectory;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends AppCompatActivity implements OnItemSelectedListener
 {
     ArrayList<ArrayList<Float>> result;
     Button button,btnsubmit,uploadimage,annotate;
@@ -45,6 +50,10 @@ public class MainActivity extends AppCompatActivity
     Canvas canvas;
     Paint paint;
     float projectedX,projectedY;
+    Spinner spinner;
+    List<String> Items=new ArrayList<>();
+    List<String> itemsSelected=new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +69,17 @@ public class MainActivity extends AppCompatActivity
         uploadimage = findViewById(R.id.uploadimage);
         annotate = findViewById(R.id.annotate);
         annotate.setVisibility(View.GONE);
+        spinner =findViewById(R.id.spinner);
+        spinner.setOnItemSelectedListener(this);
+        Items.add("Iron");
+        Items.add("Plastic");
+        Items.add("Rubber");
+        Items.add("Cloth");
+        Items.add("Waste Food");
+        ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, Items);
+        dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(dataAdapter);
+
         // to upload to data base
         annotate.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,6 +106,7 @@ public class MainActivity extends AppCompatActivity
                     numberOfAnnotations--;
                     Toast.makeText(MainActivity.this,"Annotation deleted!",Toast.LENGTH_SHORT).show();
                     result.remove(value-1);
+                    itemsSelected.remove(value-1);
                     Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
                     Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
                     canvas = new Canvas(alteredBitmap);
@@ -94,6 +115,7 @@ public class MainActivity extends AppCompatActivity
                     for(int i=0;i<numberOfAnnotations;i++)
                     {
                         redraw(i);
+                        canvas.drawText(itemsSelected.get(i)+(i+1),(result.get(i).get(0)+result.get(i).get(2))/2,result.get(i).get(1)+10,paint);
                     }
                     imview.setImageBitmap(alteredBitmap);
                 }
@@ -106,6 +128,7 @@ public class MainActivity extends AppCompatActivity
                 button.setVisibility(View.GONE);
                 numberOfAnnotations=0;
                 result=new ArrayList<>();
+                itemsSelected =new ArrayList<>();
                 Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
@@ -116,6 +139,7 @@ public class MainActivity extends AppCompatActivity
                 uploadimage.setVisibility(View.GONE);
                 result=new ArrayList<>();
                 numberOfAnnotations=0;
+                itemsSelected =new ArrayList<>();
                 try {
                     dispatchPictureTakerAction();
                 } catch (IOException e) {
@@ -123,6 +147,19 @@ public class MainActivity extends AppCompatActivity
                 }
             }
         });
+    }
+    // to get selected item
+    @Override
+    public void onItemSelected(AdapterView<?> parent,View view, int position, long id) {
+        String item = parent.getItemAtPosition(position).toString();
+        if(itemsSelected !=null && itemsSelected.size() < numberOfAnnotations) {
+            itemsSelected.add(item);
+        }
+        else
+        {
+            Toast.makeText(MainActivity.this, "Please Annotate and then select !", Toast.LENGTH_LONG).show();
+//            canvas.drawText(itemsSelected.get(numberOfAnnotations-1),(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(0))/2,result.get(numberOfAnnotations).get(1),paint);
+        }
     }
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -139,6 +176,7 @@ public class MainActivity extends AppCompatActivity
                 paint.setColor(Color.GREEN);
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(10);
+                paint.setTextSize(100f);
                 Matrix matrix = new Matrix();
                 canvas.drawBitmap(bitmap, matrix, paint);
                 imview.setImageBitmap(alteredBitmap);
@@ -164,7 +202,6 @@ public class MainActivity extends AppCompatActivity
                                 if(upy >imview.getHeight() ) upy=imview.getHeight();
                                 projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
                                 projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-
                                 onDrawRect(downx,downy,projectedX,projectedY,paint);
                                 imview.invalidate();
                                 break;
@@ -192,6 +229,7 @@ public class MainActivity extends AppCompatActivity
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
                 paint.setColor(Color.GREEN);
+                paint.setTextSize(100f);
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(10);
                 Matrix matrix = new Matrix();
@@ -243,6 +281,7 @@ public class MainActivity extends AppCompatActivity
         ans.add(x1);
         ans.add(y1);
         canvas.drawRect(x, y, x1, y1,paint);
+        canvas.drawText(""+numberOfAnnotations,(x+x1)/2,y+10,paint);
         result.add(ans);
     }
     private void dispatchPictureTakerAction() throws IOException {
@@ -273,5 +312,10 @@ public class MainActivity extends AppCompatActivity
             Log.d("mylog","Exep"+e.toString());
         }
         return image;
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+
     }
 }
