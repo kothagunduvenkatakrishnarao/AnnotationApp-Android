@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         annotate.setVisibility(View.GONE);
         spinner =findViewById(R.id.spinner);
         spinner.setOnItemSelectedListener(this);
+        Items.add("-----");
         Items.add("Iron");
         Items.add("Plastic");
         Items.add("Rubber");
@@ -211,7 +212,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     @Override
     public void onItemSelected(AdapterView<?> parent,View view, int position, long id) {
         String item = parent.getItemAtPosition(position).toString();
-        if(itemsSelected.size() < numberOfAnnotations) {
+        if(!item.equals("-----") && itemsSelected.size() < numberOfAnnotations) {
             itemsSelected.add(item);
             canvas.drawText(item,(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(2))/2,result.get(numberOfAnnotations-1).get(1),paint);
             imview.invalidate();
