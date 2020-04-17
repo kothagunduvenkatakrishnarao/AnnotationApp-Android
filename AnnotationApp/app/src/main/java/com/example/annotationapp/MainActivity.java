@@ -3,6 +3,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import android.Manifest;
+import org.json.JSONException;
+import org.json.JSONObject;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.database.Cursor;
@@ -22,8 +24,13 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -50,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     Canvas canvas;
     Paint paint;
     float projectedX,projectedY;
+    float width,height;
     Spinner spinner;
     List<String> Items=new ArrayList<>();
     List<String> itemsSelected=new ArrayList<>();
@@ -76,22 +84,73 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         Items.add("Rubber");
         Items.add("Cloth");
         Items.add("Waste Food");
+        Items.add("car");
+        Items.add("car Number plate");
         ArrayAdapter<String> dataAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, Items);
         dataAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(dataAdapter);
 
-        // to upload to data base
         annotate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 button.setVisibility(View.VISIBLE);
                 uploadimage.setVisibility(View.VISIBLE);
-                Log.d("result",""+result);
-                Toast.makeText(MainActivity.this,"This function is not implemented",Toast.LENGTH_SHORT).show();
+                JSONObject jsonObject = new JSONObject();
+                String file = filename();
+                File myDir = new File(Environment.getExternalStorageDirectory()+"/Download/"+file);
+                myDir.mkdir();
+                try {
+
+                    jsonObject.put("name", ""+file);
+                    JSONObject wid_hei = new JSONObject();
+                    wid_hei.put("width",width);
+                    wid_hei.put("height",height);
+                    jsonObject.put("size", wid_hei);
+                    ArrayList<JSONObject> obj = new ArrayList<>();
+                    for(int i=0;i<result.size();i++) {
+                        JSONObject temp = new JSONObject();
+                        temp.put("bitmap",null);
+                        temp.put("classTitle",itemsSelected.get(i));
+                        JSONObject points = new JSONObject();
+                        ArrayList<ArrayList<Float>> left_top_right_bottom = new ArrayList<>();
+                        for(int j=0;j<4;j+=2) {
+                            ArrayList<Float> t = new ArrayList<>();
+                            t.add(result.get(i).get(j));
+                            t.add(result.get(i).get(j+1));
+                            left_top_right_bottom.add(t);
+                        }
+                        points.put("exterior",left_top_right_bottom);
+                        points.put("interior",new ArrayList<>());
+                        temp.put("points",points);
+                        obj.add(temp);
+                    }
+                    jsonObject.put("objects",obj);
+                    } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                File f = new File(myDir+"/"+file+".json");
+                Bitmap bitmap=BitmapFactory.decodeFile(pathToFile);
+                File f2 = new File(myDir+"/"+file+".png");
+                Writer output= null;
+                try {
+                    f.createNewFile();
+                    f2.createNewFile();
+                    output = new BufferedWriter(new FileWriter(f));
+                    output.write(jsonObject.toString());
+                    output.close();
+                    OutputStream stream = new FileOutputStream(f2);
+                    bitmap.compress(Bitmap.CompressFormat.PNG,100,stream);
+                    stream.flush();
+                    stream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Toast.makeText(MainActivity.this,"json file created",Toast.LENGTH_SHORT).show();
+                imview.setImageBitmap(null);
+
             }
         });
 
-        //To delete an annotation
         btnsubmit.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("ShowToast")
             @Override
@@ -116,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                     {
                         redraw(i);
                         canvas.drawText(itemsSelected.get(i)+(i+1),(result.get(i).get(0)+result.get(i).get(2))/2,result.get(i).get(1)+10,paint);
+                        imview.invalidate();
                     }
                     imview.setImageBitmap(alteredBitmap);
                 }
@@ -129,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 numberOfAnnotations=0;
                 result=new ArrayList<>();
                 itemsSelected =new ArrayList<>();
-                Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(i, RESULT_LOAD_IMAGE);
             }
         });
@@ -148,13 +208,13 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
             }
         });
     }
-    // to get selected item
     @Override
     public void onItemSelected(AdapterView<?> parent,View view, int position, long id) {
         String item = parent.getItemAtPosition(position).toString();
         if(itemsSelected.size() < numberOfAnnotations) {
             itemsSelected.add(item);
             canvas.drawText(item,(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(2))/2,result.get(numberOfAnnotations-1).get(1),paint);
+            imview.invalidate();
         }
         else
         {
@@ -170,6 +230,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
             if(requestCode==1 && numberOfAnnotations==itemsSelected.size())
             {
                 Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
+                width=bitmap.getWidth();
+                height=bitmap.getHeight();
                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
@@ -180,6 +242,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 Matrix matrix = new Matrix();
                 canvas.drawBitmap(bitmap, matrix, paint);
                 imview.setImageBitmap(alteredBitmap);
+
                 imview.setOnTouchListener(new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
@@ -201,8 +264,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                                 if(upy < 0) upy =0;
                                 if(upy >imview.getHeight() ) upy=imview.getHeight();
                                 projectedX = (float)((double)upx * ((double)bitmap.getWidth()/(double)imview.getWidth()));
-                                projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));
-                                if(numberOfAnnotations-itemsSelected.size() == 1) onDrawRect(downx,downy,projectedX,projectedY,paint);
+                                projectedY = (float)((double)upy * ((double)bitmap.getHeight()/(double)imview.getHeight()));if(numberOfAnnotations-itemsSelected.size() == 1) onDrawRect(downx,downy,projectedX,projectedY,paint);
                                 else numberOfAnnotations --;
                                 imview.invalidate();
                                 break;
@@ -226,6 +288,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 pathToFile = cursor.getString(columnIndex);
                 cursor.close();
                 Bitmap bitmap= BitmapFactory.decodeFile(pathToFile);
+                width=bitmap.getWidth();
+                height=bitmap.getHeight();
                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
@@ -271,9 +335,22 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
             }
         }
     }
+
     public void redraw(int i)
     {
         canvas.drawRect(result.get(i).get(0), result.get(i).get(1), result.get(i).get(2), result.get(i).get(3),paint);
+    }
+    public String filename()
+    {
+        String answer="";
+        for(int i=pathToFile.length()-1;i>=0;i--)
+        {
+            if(pathToFile.charAt(i)=='/') {
+                answer = pathToFile.substring(i+1,pathToFile.length()-4);
+                break;
+            }
+        }
+        return answer;
     }
     public void onDrawRect(float x,float y, float x1,float y1 ,Paint paint)
     {
@@ -284,6 +361,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         ans.add(y1);
         canvas.drawRect(x, y, x1, y1,paint);
         canvas.drawText(""+numberOfAnnotations,(x+x1)/2,y+10,paint);
+        imview.invalidate();
         result.add(ans);
     }
     private void dispatchPictureTakerAction() throws IOException {
