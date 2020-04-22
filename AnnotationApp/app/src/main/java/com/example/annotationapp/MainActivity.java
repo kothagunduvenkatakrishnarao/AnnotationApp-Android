@@ -96,59 +96,69 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
             public void onClick(View v) {
                 button.setVisibility(View.VISIBLE);
                 uploadimage.setVisibility(View.VISIBLE);
-                JSONObject jsonObject = new JSONObject();
-                String file = filename();
-                File myDir = new File(Environment.getExternalStorageDirectory()+"/Download/"+file);
-                myDir.mkdir();
-                try {
+                annotate.setVisibility(View.GONE);
+                if(itemsSelected.size()!=0 ) {
+//                    Toast.makeText(MainActivity.this,"please wait for a while!",Toast.LENGTH_LONG).show();
+                    JSONObject jsonObject = new JSONObject();
+                    String file = filename();
+                    File myDir = new File(Environment.getExternalStorageDirectory() + "/Download/" + file);
+                    myDir.mkdir();
+                    try {
 
-                    jsonObject.put("name", ""+file);
-                    JSONObject wid_hei = new JSONObject();
-                    wid_hei.put("width",width);
-                    wid_hei.put("height",height);
-                    jsonObject.put("size", wid_hei);
-                    ArrayList<JSONObject> obj = new ArrayList<>();
-                    for(int i=0;i<result.size();i++) {
-                        JSONObject temp = new JSONObject();
-                        temp.put("bitmap",null);
-                        temp.put("classTitle",itemsSelected.get(i));
-                        JSONObject points = new JSONObject();
-                        ArrayList<ArrayList<Float>> left_top_right_bottom = new ArrayList<>();
-                        for(int j=0;j<4;j+=2) {
-                            ArrayList<Float> t = new ArrayList<>();
-                            t.add(result.get(i).get(j));
-                            t.add(result.get(i).get(j+1));
-                            left_top_right_bottom.add(t);
+                        jsonObject.put("name", "" + file);
+                        JSONObject wid_hei = new JSONObject();
+                        wid_hei.put("width", width);
+                        wid_hei.put("height", height);
+                        jsonObject.put("size", wid_hei);
+                        ArrayList<JSONObject> obj = new ArrayList<>();
+                        for (int i = 0; i < result.size(); i++) {
+                            JSONObject temp = new JSONObject();
+                            temp.put("bitmap", null);
+                            temp.put("classTitle", itemsSelected.get(i));
+                            JSONObject points = new JSONObject();
+                            ArrayList<ArrayList<Float>> left_top_right_bottom = new ArrayList<>();
+                            for (int j = 0; j < 4; j += 2) {
+                                ArrayList<Float> t = new ArrayList<>();
+                                t.add(result.get(i).get(j));
+                                t.add(result.get(i).get(j + 1));
+                                left_top_right_bottom.add(t);
+                            }
+                            points.put("exterior", left_top_right_bottom);
+                            points.put("interior", new ArrayList<>());
+                            temp.put("points", points);
+                            obj.add(temp);
                         }
-                        points.put("exterior",left_top_right_bottom);
-                        points.put("interior",new ArrayList<>());
-                        temp.put("points",points);
-                        obj.add(temp);
-                    }
-                    jsonObject.put("objects",obj);
+                        jsonObject.put("objects", obj);
                     } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                File f = new File(myDir+"/"+file+".json");
-                Bitmap bitmap=BitmapFactory.decodeFile(pathToFile);
-                File f2 = new File(myDir+"/"+file+".png");
-                Writer output= null;
-                try {
-                    f.createNewFile();
-                    f2.createNewFile();
-                    output = new BufferedWriter(new FileWriter(f));
-                    output.write(jsonObject.toString());
-                    output.close();
-                    OutputStream stream = new FileOutputStream(f2);
-                    bitmap.compress(Bitmap.CompressFormat.PNG,100,stream);
-                    stream.flush();
-                    stream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                Toast.makeText(MainActivity.this,"json file created",Toast.LENGTH_SHORT).show();
-                imview.setImageBitmap(null);
+                        e.printStackTrace();
+                    }
+                    File f = new File(myDir + "/" + file + ".json");
+                    Bitmap bitmap = BitmapFactory.decodeFile(pathToFile);
+                    File f2 = new File(myDir + "/" + file + ".png");
+                    Writer output = null;
+                    try {
+                        f.createNewFile();
+                        f2.createNewFile();
+                        output = new BufferedWriter(new FileWriter(f));
+                        output.write(jsonObject.toString());
+                        output.close();
+                        OutputStream stream = new FileOutputStream(f2);
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                        stream.flush();
+                        stream.close();
+                        Toast.makeText(MainActivity.this, "json file created", Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        Log.i("file creation",e.toString());
+                        Toast.makeText(MainActivity.this, "unable to create a json file", Toast.LENGTH_SHORT).show();
+                    }
 
+                    imview.setImageBitmap(null);
+                    itemsSelected=new ArrayList<>();
+                }
+                else
+                {
+                    Toast.makeText(MainActivity.this,"select atleast a single annotaion or pick or capture annother image",Toast.LENGTH_LONG).show();
+                }
             }
         });
 
@@ -175,7 +185,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                     for(int i=0;i<numberOfAnnotations;i++)
                     {
                         redraw(i);
-                        canvas.drawText(itemsSelected.get(i)+(i+1),(result.get(i).get(0)+result.get(i).get(2))/2,result.get(i).get(1)+10,paint);
+                        canvas.drawText(""+(i+1),(result.get(i).get(0)+result.get(i).get(2))/2,result.get(i).get(1),paint);
+                        canvas.drawText(itemsSelected.get(i),(result.get(i).get(0)+result.get(i).get(2))/2,result.get(i).get(1)+100,paint);
                         imview.invalidate();
                     }
                     imview.setImageBitmap(alteredBitmap);
@@ -214,7 +225,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         String item = parent.getItemAtPosition(position).toString();
         if(!item.equals("-----") && itemsSelected.size() < numberOfAnnotations) {
             itemsSelected.add(item);
-            canvas.drawText(item,(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(2))/2,result.get(numberOfAnnotations-1).get(1),paint);
+            canvas.drawText(item,(result.get(numberOfAnnotations-1).get(0)+result.get(numberOfAnnotations-1).get(2))/2,result.get(numberOfAnnotations-1).get(1)+100,paint);
             imview.invalidate();
         }
         else
@@ -236,6 +247,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 Bitmap alteredBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
                 canvas = new Canvas(alteredBitmap);
                 paint = new Paint();
+                paint.setTextAlign(Paint.Align.CENTER);
                 paint.setColor(Color.GREEN);
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(10);
@@ -296,6 +308,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 paint = new Paint();
                 paint.setColor(Color.GREEN);
                 paint.setTextSize(100f);
+                paint.setTextAlign(Paint.Align.CENTER);
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(10);
                 Matrix matrix = new Matrix();
@@ -361,7 +374,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         ans.add(x1);
         ans.add(y1);
         canvas.drawRect(x, y, x1, y1,paint);
-        canvas.drawText(""+numberOfAnnotations,(x+x1)/2,y+10,paint);
+        canvas.drawText(""+numberOfAnnotations,(x+x1)/2,y,paint);
         imview.invalidate();
         result.add(ans);
     }
